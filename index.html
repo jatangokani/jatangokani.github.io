@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Timepass</title>
+  <style>
+    :root{
+      --bg1:#140018; --bg2:#2b0030;
+      --card: rgba(20,0,25,.82);
+      --stroke: rgba(255,255,255,.14);
+      --text:#fff; --muted: rgba(255,255,255,.72);
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --pink:#ff4da6; --pink2:#ff77c6;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(255,77,166,.18), transparent 55%),
+        radial-gradient(900px 600px at 80% 20%, rgba(255,119,198,.16), transparent 60%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 14px;
+      overflow:hidden;
+    }
+
+    .card{
+      width: min(760px, 100%);
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+      overflow:hidden;
+    }
+
+    /* YES page card fits screen */
+    .card.fit{
+      height: min(92vh, 760px);
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+
+    .badge{
+      display:inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,77,166,.16);
+      border: 1px solid rgba(255,77,166,.35);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    h1{ margin: 10px 0 4px; font-size: 28px; }
+    p{ margin: 0; color: var(--muted); line-height: 1.25; font-size: 14px; }
+
+    .topRow{
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 12px;
+    }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn{
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight: 700;
+      transition: transform .08s ease, background .15s ease;
+    }
+    .btn:hover{ background: rgba(255,255,255,.10); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      background: linear-gradient(90deg, rgba(255,77,166,.95), rgba(255,119,198,.9));
+      border-color: rgba(255,77,166,.6);
+      color: #1a0013;
+    }
+
+    .input{
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      outline:none;
+    }
+    .msg{ margin-top: 8px; min-height: 18px; font-size: 13px; color: rgba(255,255,255,.85); }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: rgba(255,255,255,.9);
+      font-size: 13px;
+      display:none;
+      z-index: 50;
+    }
+    .toast.show{ display:block; }
+
+    /* YES content area splits nicely */
+    .yesMain{
+      flex: 1;
+      min-height: 0;
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 10px;
+      overflow:hidden;
+    }
+    @media (max-width: 760px){
+      .card.fit{ height: 92vh; }
+      .yesMain{ grid-template-columns: 1fr; }
+    }
+
+    .panel{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.12);
+      overflow:hidden;
+      min-height: 0;
+    }
+
+    /* Gif area auto fits */
+    .gifPanel{
+      padding: 10px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      min-height: 0;
+    }
+    .gifBox{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+      background: rgba(0,0,0,.18);
+      flex: 1;
+      min-height: 0;
+    }
+    .gifBox img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display:block;
+      background: rgba(0,0,0,.25);
+    }
+
+    /* Floating photos live in the right panel */
+    .photoStage{
+      position: relative;
+      height: 100%;
+      min-height: 0;
+      overflow:hidden;
+    }
+
+    .floatCard{
+      position:absolute;
+      width: 220px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(25,5,30,.72);
+      box-shadow: 0 18px 55px rgba(0,0,0,.45);
+      overflow:hidden;
+      transform: rotate(var(--r));
+      animation: floaty var(--d) ease-in-out infinite alternate;
+      cursor: pointer;
+    }
+    .floatCard img{
+      width:100%;
+      height: 220px;
+      object-fit: cover;
+      display:block;
+      background: rgba(0,0,0,.25);
+    }
+    .cap{
+      padding: 8px 10px;
+      font-size: 12.5px;
+      color: rgba(255,255,255,.88);
+      border-top: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.08);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    @keyframes floaty{
+      from{ transform: translateY(0px) rotate(var(--r)); }
+      to{ transform: translateY(-14px) rotate(calc(var(--r) + 1deg)); }
+    }
+
+    /* desktop positions */
+    .p1{ left: 1px; top: 10px;  --r:-7deg; --d: 3.8s; }
+    .p2{ left: 170px; top: 20px; --r: 6deg; --d: 4.2s; }
+    .p3{ left: -30px; top: 150px; --r: 4deg; --d: 3.6s; }
+    .p4{ left: 190px; top: 150px; --r:-5deg; --d: 4.6s; z-index: 4; }
+
+
+    /* small screens: show only 2 cards at once (still uses all 4 by rotating) */
+    @media (max-width: 760px){
+      .photoStage{ height: 320px; }
+      .floatCard{ width: 200px; }
+      .floatCard img{ height: 200px; }
+      .p3,.p4{ display:none; }
+      .p1{ left: 14px; top: 18px; }
+      .p2{ left: 140px; top: 90px; }
+    }
+
+    .note{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      padding: 10px;
+      line-height: 1.35;
+      font-size: 13.5px;
+    }
+
+    .playlist{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+    .track{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+    }
+    .small{ font-size: 13px; color: rgba(255,255,255,.88); }
+
+    .arena{
+      margin-top: 12px;
+      position: relative;
+      height: 170px;
+      border-radius: 16px;
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(0,0,0,.14);
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 14px;
+    }
+
+    /* falling stuff */
+    .fallLayer{
+      position: fixed;
+      inset: 0;
+      pointer-events:none;
+      overflow:hidden;
+      z-index: 1;
+    }
+    .fall{
+      position: absolute;
+      top: -40px;
+      left: 0;
+      font-size: 22px;
+      opacity: .95;
+      animation: fallDown linear forwards;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.35));
+      will-change: transform;
+    }
+    @keyframes fallDown{
+      from{ transform: translate3d(var(--x), -40px, 0) rotate(0deg); }
+      to{ transform: translate3d(var(--x), calc(100vh + 60px), 0) rotate(360deg); }
+    }
+
+    /* lightbox */
+    .lightbox{
+      position: fixed;
+      inset: 0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background: rgba(0,0,0,.78);
+      padding: 18px;
+      z-index: 60;
+    }
+    .lightbox.show{ display:flex; }
+    .lightbox img{
+      width: min(1100px, 100%);
+      max-height: 86vh;
+      object-fit: contain;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.25);
+    }
+    .lightboxClose{
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      cursor: pointer;
+      z-index: 61;
+    }
+    .p3{ z-index: 2; }
+    .p4{ z-index: 4; }
+
+    /* gift animation overlay */
+    .giftOverlay{
+        position: fixed;
+        inset: 0;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        background: rgba(0,0,0,.6);
+        z-index:100;
+    }
+
+    .giftOverlay.show{ display:flex; }
+
+    .giftBox{
+        text-align:center;
+        animation: giftZoom .8s ease forwards;
+    }
+
+    .giftIcons{
+        font-size:70px;
+        margin-bottom:12px;
+        animation: giftBounce 1.2s ease infinite alternate;
+    }
+
+    .giftText{
+        font-size:22px;
+        font-weight:700;
+    }
+
+    @keyframes giftZoom{
+        from{ transform:scale(.2); opacity:0; }
+        to{ transform:scale(1); opacity:1; }
+    }
+
+    @keyframes giftBounce{
+        from{ transform:translateY(0); }
+        to{ transform:translateY(-10px); }
+    }
+
+  </style>
+</head>
+<div class="giftOverlay" id="giftOverlay">
+    <div class="giftBox">
+        <div class="giftIcons">💐 🍫</div>
+        <div class="giftText">Here are flowers and chocolates for you ❤️</div>
+    </div>
+</div>
+<body>
+  <div class="fallLayer" id="fallLayer" aria-hidden="true"></div>
+  <div id="app"></div>
+  <div class="toast" id="toast">Tap once to turn sound on.</div>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lightboxClose" id="lightboxClose" type="button">Close</button>
+    <img id="lightboxImg" alt="photo" />
+  </div>
+ 
+
+  <audio id="bgAudio" preload="metadata" loop></audio>
+
+  <script>
+    const SECRET_ANSWER = "jadiyo";
+    const UNLOCK_KEY = "val_unlock_fit_v1";
+
+    // Files beside index.html
+    const gifs = { paku: "paku.gif", yes: "yes.gif" };
+    const photos = [
+      { file: "photo1.jpg", cap: "Photo 1" },
+      { file: "photo3.jpg", cap: "Photo 2" },
+      { file: "photo2.jpg", cap: "Photo 3" },
+      { file: "photo4.jpg", cap: "Photo 4" },
+    ];
+    const songs = [
+      { name: "Song 1", file: "song1.mp3" },
+      { name: "Song 2", file: "song2.mp3" },
+      { name: "Song 3", file: "song3.mp3" },
+    ];
+
+    const app = document.getElementById("app");
+    const bgAudio = document.getElementById("bgAudio");
+    const toast = document.getElementById("toast");
+
+    let currentSongIndex = 0;
+    let userInteracted = false;
+    let flowerTimer = null;
+
+    // on small screens rotate which photos show
+    let mobileSet = 0;
+    let mobileRotTimer = null;
+
+    function isUnlocked(){ return localStorage.getItem(UNLOCK_KEY) === "yes"; }
+    function unlock(){ localStorage.setItem(UNLOCK_KEY, "yes"); }
+    function setHash(r){ location.hash = r; }
+    function route(){ return (location.hash || "#/").slice(1); }
+
+    function setSong(i){
+      if (!songs.length) return;
+      currentSongIndex = (i + songs.length) % songs.length;
+      bgAudio.src = songs[currentSongIndex].file;
+    }
+
+    async function playSong(i){
+      setSong(i);
+      bgAudio.muted = false;
+      userInteracted = true;
+      toast.classList.remove("show");
+      try { await bgAudio.play(); } catch {}
+    }
+
+    function autoplayBestEffort(){
+      if (!songs.length) return;
+      setSong(0);
+      bgAudio.volume = 0.9;
+      bgAudio.muted = true;
+      const p = bgAudio.play();
+      if (p && p.catch) p.catch(() => {});
+      if (!userInteracted){
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2600);
+      }
+    }
+
+    function firstTapUnmute(){
+      const handler = async () => {
+        userInteracted = true;
+        toast.classList.remove("show");
+        bgAudio.muted = false;
+        try { await bgAudio.play(); } catch {}
+        window.removeEventListener("pointerdown", handler);
+        window.removeEventListener("keydown", handler);
+      };
+      window.addEventListener("pointerdown", handler);
+      window.addEventListener("keydown", handler);
+    }
+
+    function playlistHtml(id){
+      return `
+        <div class="playlist" id="${id}">
+          ${songs.map((t, idx) => `
+            <div class="track">
+              <div class="small">${t.name}${idx === currentSongIndex ? " (now)" : ""}</div>
+              <button class="btn" data-play="${idx}" type="button">Play</button>
+            </div>
+          `).join("")}
+          <div class="row" style="margin-top:6px;">
+            <button class="btn" data-prev type="button">Prev</button>
+            <button class="btn" data-next type="button">Next</button>
+            <button class="btn" data-mute type="button">${bgAudio.muted ? "Unmute" : "Mute"}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function wirePlaylist(root){
+      root.querySelectorAll("[data-play]").forEach(btn => {
+        btn.onclick = async () => {
+          const idx = Number(btn.getAttribute("data-play"));
+          await playSong(idx);
+          router();
+        };
+      });
+      const prev = root.querySelector("[data-prev]");
+      const next = root.querySelector("[data-next]");
+      const mute = root.querySelector("[data-mute]");
+      if (prev) prev.onclick = async () => { await playSong(currentSongIndex - 1); router(); };
+      if (next) next.onclick = async () => { await playSong(currentSongIndex + 1); router(); };
+      if (mute) mute.onclick = () => {
+        bgAudio.muted = !bgAudio.muted;
+        if (!bgAudio.muted){ userInteracted = true; toast.classList.remove("show"); }
+        router();
+      };
+    }
+
+    function secretPage(){
+      stopFlowers();
+      stopMobileRotate();
+      app.innerHTML = `
+        <section class="card">
+          <span class="badge">Quick question</span>
+          <h1>What do you call me?</h1>
+          <p>Type it how you say it.</p>
+          <form id="f">
+            <input class="input" id="a" placeholder="..." autocomplete="off" />
+            <div class="row" style="margin-top:12px;">
+              <button class="btn primary" type="submit">Enter</button>
+            </div>
+            <div class="msg" id="m"></div>
+          </form>
+          <p style="font-size:12.5px; margin-top:10px;">If sound is silent, tap once.</p>
+        </section>
+      `;
+      const f = document.getElementById("f");
+      const a = document.getElementById("a");
+      const m = document.getElementById("m");
+
+      if (isUnlocked()) { setHash("#/ask"); return; }
+
+      f.onsubmit = (e) => {
+        e.preventDefault();
+        const val = (a.value || "").trim().toLowerCase();
+        if (val === SECRET_ANSWER.toLowerCase()){
+          unlock();
+          m.textContent = "Correct.";
+          setHash("#/ask");
+        } else {
+          m.textContent = "Nope. Try again.";
+          a.value = "";
+          a.focus();
+        }
+      };
+    }
+
+    function askPage(){
+      stopFlowers();
+      stopMobileRotate();
+      if (!isUnlocked()) { setHash("#/"); return; }
+      app.innerHTML = `
+        <section class="card">
+          <span class="badge">Question</span>
+          <h1>Will you be my valentine?</h1>
+          <p>Choose wisely 🙂</p>
+          <div class="row" style="margin-top:10px;">
+            <button class="btn primary" id="yes" type="button">Yes</button>
+            <button class="btn" id="no" type="button">No</button>
+          </div>
+          <div style="margin-top:12px;">
+            ${playlistHtml("pl")}
+          </div>
+        </section>
+      `;
+      const yesBtn = document.getElementById("yes");
+      const noBtn = document.getElementById("no");
+      
+      yesBtn.onclick = async () => {
+        if (songs.length >= 2) await playSong(1);
+        showGift();
+        setHash("#/yes");
+      };
+
+      noBtn.onclick = () => {
+        if (window.matchMedia("(max-width: 760px)").matches){
+            moveNoMobile();
+        } else {
+            setHash("#/paku");
+        }
+      };
+
+      noBtn.addEventListener("touchstart", (e)=>{
+        if (window.matchMedia("(max-width: 760px)").matches){
+            e.preventDefault();
+            moveNoMobile();
+        }
+      }, { passive:false });
+
+      function moveNoMobile(){
+        const parent = noBtn.parentElement;
+        const p = parent.getBoundingClientRect();
+        const b = noBtn.getBoundingClientRect();
+
+        const maxX = p.width - b.width - 10;
+        const maxY = p.height - b.height - 10;
+
+        const x = Math.random() * maxX;
+        const y = Math.random() * maxY;
+
+        noBtn.style.position = "absolute";
+        noBtn.style.left = x + "px";
+        noBtn.style.top = y + "px";
+      }
+
+
+      wirePlaylist(document.getElementById("pl"));
+    }
+
+    function pakuPage(){
+      stopFlowers();
+      stopMobileRotate();
+      if (!isUnlocked()) { setHash("#/"); return; }
+      app.innerHTML = `
+        <section class="card">
+          <span class="badge">Last chance</span>
+          <h1>Paku na 😭</h1>
+          <p>Ok last chance. Be my valentine?</p>
+
+          <div class="panel" style="margin-top:12px;">
+            <div class="gifBox" style="height:240px;">
+              <img src="${gifs.paku}" alt="paku gif" />
+            </div>
+          </div>
+
+          <div class="arena" id="arena">
+            <button class="btn primary" id="yes" type="button">Yes</button>
+            <button class="btn" id="no" type="button">No</button>
+          </div>
+
+          <div style="margin-top:12px;">
+            ${playlistHtml("pl")}
+          </div>
+        </section>
+      `;
+
+      const arena = document.getElementById("arena");
+      const noBtn = document.getElementById("no");
+      noBtn.style.position = "absolute";
+      moveNo();
+      noBtn.addEventListener("mouseenter", moveNo);
+      noBtn.addEventListener("touchstart", (e) => { e.preventDefault(); moveNo(); }, { passive:false });
+
+      function moveNo(){
+        const pad = 12;
+        const a = arena.getBoundingClientRect();
+        const b = noBtn.getBoundingClientRect();
+        const maxX = Math.max(pad, a.width - b.width - pad);
+        const maxY = Math.max(pad, a.height - b.height - pad);
+        const x = Math.floor(Math.random() * (maxX - pad + 1)) + pad;
+        const y = Math.floor(Math.random() * (maxY - pad + 1)) + pad;
+        noBtn.style.left = x + "px";
+        noBtn.style.top = y + "px";
+      }
+
+      document.getElementById("yes").onclick = async () => {
+        if (songs.length >= 2) await playSong(1);
+            showGift();
+            setTimeout(()=> setHash("#/yes"), 1800);
+        };
+
+
+      wirePlaylist(document.getElementById("pl"));
+    }
+
+    function yesPage(){
+      if (!isUnlocked()) { setHash("#/"); return; }
+      startFlowers();
+      startMobileRotate();
+
+      app.innerHTML = `
+        <section class="card fit">
+          <div class="topRow">
+            <div>
+              <span class="badge">Accepted</span>
+              <h1>Yessss 💖</h1>
+              <p>I knew it. Come here.</p>
+            </div>
+            <button class="btn" id="back" type="button">Back</button>
+          </div>
+
+          <div class="yesMain">
+            <div class="panel gifPanel">
+              <div class="gifBox">
+                <img src="${gifs.yes}" alt="yes gif" />
+              </div>
+              <div class="note">
+                I like you more than I can say. You make my days better. Thank you for being you. Bawra bana Diya hai aapne Mujhe.
+                <div style="margin-top:8px; font-weight:700;">hehe bye!!!</div>
+              </div>
+            </div>
+
+            <div class="panel photoStage" id="photoStage">
+              ${photoCardsHtml()}
+            </div>
+          </div>
+
+          <div>
+            ${playlistHtml("pl")}
+          </div>
+        </section>
+      `;
+
+      document.getElementById("back").onclick = () => setHash("#/ask");
+      wirePlaylist(document.getElementById("pl"));
+      setupLightbox();
+      wirePhotoClicks();
+    }
+
+    function photoCardsHtml(){
+      // On small screens we show 2, and rotate sets (0,1) then (2,3)
+      const isSmall = window.matchMedia("(max-width: 760px)").matches;
+      if (isSmall){
+        const a = mobileSet === 0 ? 0 : 2;
+        const b = mobileSet === 0 ? 1 : 3;
+        return `
+          <div class="floatCard p1" data-src="${photos[a].file}">
+            <img src="${photos[a].file}" alt="photo" />
+            <div class="cap">${photos[a].cap}</div>
+          </div>
+          <div class="floatCard p2" data-src="${photos[b].file}">
+            <img src="${photos[b].file}" alt="photo" />
+            <div class="cap">${photos[b].cap}</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="floatCard p1" data-src="${photos[0].file}">
+          <img src="${photos[0].file}" alt="photo" />
+          <div class="cap">${photos[0].cap}</div>
+        </div>
+        <div class="floatCard p2" data-src="${photos[1].file}">
+          <img src="${photos[1].file}" alt="photo" />
+          <div class="cap">${photos[1].cap}</div>
+        </div>
+        <div class="floatCard p3" data-src="${photos[2].file}">
+          <img src="${photos[2].file}" alt="photo" />
+          <div class="cap">${photos[2].cap}</div>
+        </div>
+        <div class="floatCard p4" data-src="${photos[3].file}">
+          <img src="${photos[3].file}" alt="photo" />
+          <div class="cap">${photos[3].cap}</div>
+        </div>
+      `;
+    }
+
+    function wirePhotoClicks(){
+      document.querySelectorAll(".floatCard").forEach(c => {
+        c.onclick = () => openLightbox(c.getAttribute("data-src"));
+      });
+    }
+
+    function startMobileRotate(){
+      stopMobileRotate();
+      const isSmall = window.matchMedia("(max-width: 760px)").matches;
+      if (!isSmall) return;
+
+      mobileRotTimer = setInterval(() => {
+        mobileSet = mobileSet === 0 ? 1 : 0;
+        const stage = document.getElementById("photoStage");
+        if (stage){
+          stage.innerHTML = photoCardsHtml();
+          wirePhotoClicks();
+        }
+      }, 3500);
+    }
+
+    function stopMobileRotate(){
+      if (mobileRotTimer) clearInterval(mobileRotTimer);
+      mobileRotTimer = null;
+      mobileSet = 0;
+    }
+
+    // lightbox
+    function setupLightbox(){
+      const box = document.getElementById("lightbox");
+      const close = document.getElementById("lightboxClose");
+      if (!box || !close) return;
+
+      const hide = () => {
+        box.classList.remove("show");
+        box.setAttribute("aria-hidden", "true");
+        document.getElementById("lightboxImg").src = "";
+      };
+
+      close.onclick = hide;
+      box.onclick = (e) => { if (e.target === box) hide(); };
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+    }
+
+    function openLightbox(src){
+      const box = document.getElementById("lightbox");
+      const img = document.getElementById("lightboxImg");
+      img.src = src;
+      box.classList.add("show");
+      box.setAttribute("aria-hidden", "false");
+    }
+
+    // falling roses + chocolates
+    function startFlowers(){
+      const layer = document.getElementById("fallLayer");
+      stopFlowers();
+      const icons = ["🌹","💐","🌸","✨","🍫"];
+      flowerTimer = setInterval(() => {
+        const el = document.createElement("div");
+        el.className = "fall";
+        el.textContent = icons[Math.floor(Math.random() * icons.length)];
+        const x = Math.floor(Math.random() * 100);
+        const dur = (Math.random() * 2.2 + 3.2).toFixed(2);
+        const size = Math.floor(Math.random() * 12 + 18);
+        el.style.setProperty("--x", x + "vw");
+        el.style.animationDuration = dur + "s";
+        el.style.fontSize = size + "px";
+        layer.appendChild(el);
+        setTimeout(() => el.remove(), (parseFloat(dur) * 1000) + 400);
+      }, 240);
+    }
+    function stopFlowers(){
+      const layer = document.getElementById("fallLayer");
+      if (flowerTimer) clearInterval(flowerTimer);
+      flowerTimer = null;
+      if (layer) layer.innerHTML = "";
+    }
+
+    function router(){
+      const r = route();
+      if (r === "/") return secretPage();
+      if (r === "/ask") return askPage();
+      if (r === "/paku") return pakuPage();
+      if (r === "/yes") return yesPage();
+      return secretPage();
+    }
+
+    window.addEventListener("hashchange", router);
+    window.addEventListener("resize", () => {
+      // re-render YES page on resize so it stays fitted
+      if (route() === "/yes") router();
+    });
+
+    firstTapUnmute();
+    autoplayBestEffort();
+
+    if (!location.hash) location.hash = "#/";
+    router();
+
+    function showGift(){
+        const g=document.getElementById("giftOverlay");
+        g.classList.add("show");
+
+    setTimeout(()=>{
+        g.classList.remove("show");
+    },2500);
+}
+
+  </script>
+</body>
+</html>
